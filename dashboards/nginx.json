@@ -1,0 +1,61 @@
+{
+    "name": "Nginx",
+    "description": "Something something",
+    "graphs": [
+        {
+            "name": "CPU",
+            "description": "The combined CPU usage for all Exim Anti Spam servers",
+            "fields": [
+                {
+                    "alias": "iowait",
+                    "context": "sumSeries(derivative(mw*munin.cpu.iowait))",
+                    "derivative": true
+                }
+            ]
+        },
+        {
+            "name": "Disk",
+            "description": "The combined CPU usage for all Exim Anti Spam servers",
+            "fields": [
+                {
+                    "alias": "iowait",
+                    "context": "sumSeries(derivative(mw*munin.cpu.iowait))",
+                    "derivative": true
+                }
+            ]
+        },
+        {
+            "name": "Network",
+            "description": "The combined CPU usage for all Exim Anti Spam servers",
+            "fields": [
+                {
+                    "alias": "iowait",
+                    "context": "sumSeries(derivative(mw*munin.cpu.iowait))",
+                    "derivative": true
+                }
+            ]
+        },
+        {
+            "name": "Left",
+            "description": "The combined CPU usage for all Exim Anti Spam servers",
+            "fields": [
+                {
+                    "alias": "iowait",
+                    "context": "sumSeries(derivative(mw*munin.cpu.iowait))",
+                    "derivative": true
+                }
+            ]
+        },
+        {
+            "name": "Right",
+            "description": "The combined CPU usage for all Exim Anti Spam servers",
+            "fields": [
+                {
+                    "alias": "iowait",
+                    "context": "sumSeries(derivative(mw*munin.cpu.iowait))",
+                    "derivative": true
+                }
+            ]
+        }
+    ]
+}

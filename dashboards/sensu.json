@@ -1,0 +1,17 @@
+{
+    "name": "Sensu",
+    "description": "Something something",
+    "graphs": [
+        {
+            "name": "Combined CPU Usage",
+            "description": "The combined CPU usage for all Exim Anti Spam servers",
+            "fields": [
+                {
+                    "alias": "iowait",
+                    "context": "sumSeries(derivative(mw*munin.cpu.iowait))",
+                    "derivative": true
+                }
+            ]
+        }
+    ]
+}
