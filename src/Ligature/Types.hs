@@ -12,30 +12,41 @@
 
 module Ligature.Types (
       HashMap
+    , Key(..)
     , Dash(..)
     , Graph(..)
     , Field(..)
     , Function(..)
     , Param(..)
+    , parseParam
     , byteKey
     , textKey
-    , graphFill
+    , keyText
+    , findDash
+    , findGraph
     ) where
 
 import Control.Applicative
+import Control.Arrow          (second)
 import Data.Aeson.Types
-import Data.Char            (toLower)
-import Data.Conduit.List    (consume)
-import Data.Text            (Text)
-import Network.HTTP.Conduit
+import Data.Attoparsec.Number (Number(..))
+import Data.Char              (toUpper, toLower)
+import Data.Hashable          (Hashable)
+import Data.Maybe
+import Data.String            (IsString(..))
+import Data.Text              (Text)
 
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.Conduit          as C
 import qualified Data.HashMap.Strict   as H
 import qualified Data.Text             as T
 import qualified Data.Text.Encoding    as E
 
-type HashMap a = H.HashMap Text a
+type HashMap a = H.HashMap Key a
+
+newtype Key = Key Text deriving (Ord, Eq, Hashable, Show)
+
+instance IsString Key where
+    fromString = Key . fromString
 
 data Dash = Dash
     { dashName   :: Text
@@ -67,7 +78,11 @@ instance FromJSON Graph where
         <*> o .: "fields"
     parseJSON e = typeMismatch "Object" e
 
-data Field = Field Text Text [Function] deriving (Show)
+data Field = Field
+    { fieldAlias   :: Text
+    , fieldContext :: Text
+    , fieldFuncs   :: [Function]
+    } deriving (Show)
 
 instance FromJSON Field where
     parseJSON (Object o) = Field
@@ -114,143 +129,91 @@ data Param
 
 instance FromJSON Param where
     parseJSON (Object o) = case H.toList o of
-        [(k, v)] -> case k of
-            "Width" -> Width <$> (parseJSON v)
-
-        -- _              -> error "Ligature.Dashboards.Param expected one of: " ++ show
-        --                   ["Width", "Height", "Template", "Margin", "BgColor",
-        --                    "FgColor", "FontName", "FontSize", "FontBold", "FontItalic",
-        --                    "YMin", "YMax", "ColorList", "Title", "VTitle", "LineMode",
-        --                    "LineWidth", "HideLegend", "HideAxes", "HideGrid",
-        --                    "MinXStep", "MajorGridLineColor", "MinorGridLineColor",
-        --                    "MinorY", "Tz"]
-
-
-
--- parseParams :: HashMap Value -> Parser [Param]
--- parseParams hmap = parseJSON $ Object hmap
-
--- capitalise :: HashMap Value -> HashMap Value
--- capitalise = H.fromList . H.foldlWithKey' f []
---   where
---     f acc k v = (g k, v) : acc
---     g k       = toUpper (T.head k) `T.cons` T.tail k
-
-   -- instance FromJSON Param where
-   --    parseJSON
-   --      = \ value_a3PA
-   --          -> case value_a3PA of {
-   --               Object obj_a3PB
-   --                 -> case H.toList obj_a3PB of {
-   --                      [(conKey_a3PC, conVal_a3PD)]
-   --                        -> case conKey_a3PC of {
-   --                             _ | (conKey_a3PC == (T.pack "Width"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PE -> (Width <$> (parseJSON arg_a3PE)) }
-   --                               | (conKey_a3PC == (T.pack "Height"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PF -> (Height <$> (parseJSON arg_a3PF)) }
-   --                               | (conKey_a3PC == (T.pack "Template"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PG -> (Template <$> (parseJSON arg_a3PG)) }
-   --                               | (conKey_a3PC == (T.pack "Margin"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PH -> (Margin <$> (parseJSON arg_a3PH)) }
-   --                               | (conKey_a3PC == (T.pack "BgColor"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PI -> (BgColor <$> (parseJSON arg_a3PI)) }
-   --                               | (conKey_a3PC == (T.pack "FgColor"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PJ -> (FgColor <$> (parseJSON arg_a3PJ)) }
-   --                               | (conKey_a3PC == (T.pack "FontName"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PK -> (FontName <$> (parseJSON arg_a3PK)) }
-   --                               | (conKey_a3PC == (T.pack "FontSize"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PL -> (FontSize <$> (parseJSON arg_a3PL)) }
-   --                               | (conKey_a3PC == (T.pack "FontBold"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PM -> (FontBold <$> (parseJSON arg_a3PM)) }
-   --                               | (conKey_a3PC == (T.pack "FontItalic"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PN -> (FontItalic <$> (parseJSON arg_a3PN)) }
-   --                               | (conKey_a3PC == (T.pack "YMin"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PO -> (YMin <$> (parseJSON arg_a3PO)) }
-   --                               | (conKey_a3PC == (T.pack "YMax"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PP -> (YMax <$> (parseJSON arg_a3PP)) }
-   --                               | (conKey_a3PC == (T.pack "ColorList"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PQ -> (ColorList <$> (parseJSON arg_a3PQ)) }
-   --                               | (conKey_a3PC == (T.pack "Title"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PR -> (Title <$> (parseJSON arg_a3PR)) }
-   --                               | (conKey_a3PC == (T.pack "VTitle"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PS -> (VTitle <$> (parseJSON arg_a3PS)) }
-   --                               | (conKey_a3PC == (T.pack "LineMode"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PT -> (LineMode <$> (parseJSON arg_a3PT)) }
-   --                               | (conKey_a3PC == (T.pack "LineWidth"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PU -> (LineWidth <$> (parseJSON arg_a3PU)) }
-   --                               | (conKey_a3PC == (T.pack "HideLegend"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PV -> (HideLegend <$> (parseJSON arg_a3PV)) }
-   --                               | (conKey_a3PC == (T.pack "HideAxes"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PW -> (HideAxes <$> (parseJSON arg_a3PW)) }
-   --                               | (conKey_a3PC == (T.pack "HideGrid"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PX -> (HideGrid <$> (parseJSON arg_a3PX)) }
-   --                               | (conKey_a3PC == (T.pack "MinXStep"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PY -> (MinXStep <$> (parseJSON arg_a3PY)) }
-   --                               | (conKey_a3PC == (T.pack "MajorGridLineColor"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3PZ -> (MajorGridLineColor <$> (parseJSON arg_a3PZ)) }
-   --                               | (conKey_a3PC == (T.pack "MinorGridLineColor"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3Q0 -> (MinorGridLineColor <$> (parseJSON arg_a3Q0)) }
-   --                               | (conKey_a3PC == (T.pack "MinorY"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3Q1 -> (MinorY <$> (parseJSON arg_a3Q1)) }
-   --                               | (conKey_a3PC == (T.pack "Tz"))
-   --                               -> case conVal_a3PD of {
-   --                                    arg_a3Q2 -> (Tz <$> (parseJSON arg_a3Q2)) }
-   --                               | otherwise
-   --                               -> Data.Aeson.TH.conNotFoundFail
-   --                                    "Ligature.Dashboards.Param"
-   --                                    ["Width", "Height", "Template", "Margin", "BgColor",
-   --                                     "FgColor", "FontName", "FontSize", "FontBold", "FontItalic",
-   --                                     "YMin", "YMax", "ColorList", "Title", "VTitle", "LineMode",
-   --                                     "LineWidth", "HideLegend", "HideAxes", "HideGrid",
-   --                                     "MinXStep", "MajorGridLineColor", "MinorGridLineColor",
-   --                                     "MinorY", "Tz"]
-   --                                    (T.unpack conKey_a3PC) }
-   --                      other_a3Q3
-   --                        -> Data.Aeson.TH.wrongPairCountFail
-   --                             "Ligature.Dashboards.Param" ((show . length) other_a3Q3) }
-   --               other_a3Q4
-   --                 -> Data.Aeson.TH.noObjectFail
-   --                      "Ligature.Dashboards.Param"
-   --                      (Data.Aeson.TH.valueConName other_a3Q4) }
+        [(k, v)] -> fromPair (k, v)
+        _        -> error $ "Ligature.Dashboards.Param received malformed object"
+    parseJSON e          = typeMismatch "Object" e
 
 instance FromJSON [Param] where
-    parseJSON (Object o) = mapM f $ H.toList o
-      where
-        f = parseJSON . Object . H.fromList . (:[])
-        -- ^ There be much woe and misery
+    parseJSON (Object o) = sequence . map fromPair $ H.toList o
+    parseJSON e          = typeMismatch "Object" e
 
-byteKey :: BS.ByteString -> Text
+parseParam :: (Text, Text) -> Param
+parseParam = go String
+  where
+    go ctor t = case parse (fromPair . second ctor) t of
+        Success v -> v
+        -- Temoporary hilariously ridiculous work around
+        Error "when expecting a Integral, encountered String instead" ->
+            go (Number . I . f) t
+        Error "when expecting a Double, encountered String instead" ->
+            go (Number . D . f) t
+        Error "when expecting a Bool, encountered String instead" ->
+            go (Bool . f . \s -> toUpper (T.head s) `T.cons` T.tail s) t
+        Error e ->
+            error $ "Unable to parse param: " ++ e
+      where
+        f :: Read a => Text -> a
+        f = fromMaybe (error $ "failed to read: " ++ show t) . readMay . T.unpack
+
+readMay :: Read a => String -> Maybe a
+readMay s = case [x | (x,t) <- reads s, ("","") <- lex t] of
+    [x] -> Just x
+    _   -> Nothing
+
+fromPair :: Pair -> Parser Param
+fromPair (k, v) = case k of
+    "width"              -> f Width
+    "height"             -> f Height
+    "template"           -> f Template
+    "margin"             -> f Margin
+    "bgcolor"            -> f BgColor
+    "fgcolor"            -> f FgColor
+    "fontName"           -> f FontName
+    "fontSize"           -> f FontSize
+    "fontBold"           -> f FontBold
+    "fontItalic"         -> f FontItalic
+    "yMin"               -> f YMin
+    "yMax"               -> f YMax
+    "colorList"          -> f ColorList
+    "title"              -> f Title
+    "vtitle"             -> f VTitle
+    "lineMode"           -> f LineMode
+    "lineWidth"          -> f LineWidth
+    "hideLegend"         -> f HideLegend
+    "hideAxes"           -> f HideAxes
+    "hideGrid"           -> f HideGrid
+    "minXStep"           -> f MinXStep
+    "majorGridLineColor" -> f MajorGridLineColor
+    "minorGridLineColor" -> f MinorGridLineColor
+    "minorY"             -> f MinorY
+    "tz"                 -> f Tz
+    _                    -> error $ "Ligature.Dashboards.Param doesn't support " ++ T.unpack k
+  where
+    f ctor = ctor <$> (parseJSON v)
+
+byteKey :: BS.ByteString -> Key
 byteKey = textKey . E.decodeUtf8
 
-textKey :: Text -> Text
-textKey = T.map (toLower . f)
+textKey :: Text -> Key
+textKey = Key . T.map (toLower . f)
   where
     f ' ' = '-'
     f c   = c
 
-stripKeys :: FromJSON a => HashMap Value -> [Text] -> Parser a
+keyText :: Key -> Text
+keyText (Key k) = k
+
+findDash :: HashMap Dash -> Key -> Dash
+findDash m k = case H.lookup k m of
+    Just v  -> v
+    Nothing -> error $ "Dashboard key not found: " ++ show (k, H.keys m)
+
+findGraph :: HashMap Dash -> Key -> Key -> Graph
+findGraph m d g = case H.lookup g m' of
+    Just v  -> v
+    Nothing -> error $ "Graph key not found: " ++ show (g, H.keys m')
+  where
+    m' = dashGraphs $ findDash m d
+
+stripKeys :: FromJSON a => H.HashMap Text Value -> [Text] -> Parser a
 stripKeys hmap = parseJSON . Object . foldl (flip H.delete) hmap

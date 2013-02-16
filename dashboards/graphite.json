@@ -1,0 +1,84 @@
+{
+    "name": "Graphite",
+    "description": "Overview of Carbon health and machine utilisation",
+    "graphs": [
+        {
+            "name": "Metrics",
+            "description": "At vero eos et accusamus et iusto odio dignissimos ducimus",
+            "fields": [
+                {
+                    "alias": "received",
+                    "context": "carbon.agents.*.metricsReceived"
+                },
+                {
+                    "alias": "creates",
+                    "context": "carbon.agents.*.creates"
+                },
+                {
+                    "alias": "received",
+                    "context": "carbon.agents.*.updateOperations"
+                },
+                {
+                    "alias": "errors",
+                    "context": "carbon.agents.*.errors"
+                }
+            ]
+        },
+        {
+            "name": "CPU",
+            "description": "At vero eos et accusamus et iusto odio dignissimos ducimus",
+            "fields": [
+                {
+                    "alias": "cpu",
+                    "context": "carbon.agents.*.cpuUsage"
+                }
+            ]
+        },
+        {
+            "name": "Memory",
+            "description": "At vero eos et accusamus et iusto odio dignissimos ducimus",
+            "fields": [
+                {
+                    "alias": "memory",
+                    "context": "carbon.agents.*.memUsage"
+                }
+            ]
+        },
+        {
+            "name": "Cache",
+            "description": "At vero eos et accusamus et iusto odio dignissimos ducimus",
+            "fields": [
+                {
+                    "alias": "queries",
+                    "context": "carbon.agents.*.cache.queries"
+                },
+                {
+                    "alias": "queues",
+                    "context": "carbon.agents.*.cache.queues"
+                },
+                {
+                    "alias": "size",
+                    "context": "carbon.agents.*.cache.size"
+                }
+            ]
+        },
+        {
+            "name": "Right",
+            "description": "At vero eos et accusamus et iusto odio dignissimos ducimus",
+            "fields": [
+                {
+                    "alias": "queries",
+                    "context": "carbon.agents.*.cache.queries"
+                },
+                {
+                    "alias": "queues",
+                    "context": "carbon.agents.*.cache.queues"
+                },
+                {
+                    "alias": "size",
+                    "context": "carbon.agents.*.cache.size"
+                }
+            ]
+        }
+    ]
+}

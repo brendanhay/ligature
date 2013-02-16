@@ -1,4 +1,4 @@
-<div class="navbar navbar-fixed-top">
+<div class="navbar navbar-inverse navbar-fixed-top">
   <div class="navbar-inner">
     <div class="container">
 
@@ -8,9 +8,7 @@
         <span class="icon-bar"></span>
       </button>
 
-      <div class="pull-right">
-        <a class="brand" href="/"><pageTitle /></a>
-      </div>
+      <a class="brand" href="/"><pageTitle /></a>
 
       <div class="nav-collapse collapse">
         <ul class="nav">

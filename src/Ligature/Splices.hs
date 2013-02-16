@@ -15,11 +15,15 @@ module Ligature.Splices (
     , dashSplices
     ) where
 
-import Data.Monoid       (Monoid)
-import Data.Text         (Text)
+import Control.Applicative
+import Control.Monad.Trans.Class
+import Control.Monad
+import Data.Char           (toUpper)
+import Data.Text           (Text)
 import Heist
 import Heist.Interpreted
 import Ligature.Types
+import Ligature.URL
 
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text           as T
@@ -28,8 +32,8 @@ import qualified Text.XmlHtml        as X
 navSplices :: Monad m => HashMap Dash -> [(Text, Splice m)]
 navSplices hmap = [("nav", mapSplices (uncurry navSplice) $ H.toList hmap)]
 
-navSplice :: Monad m => Text -> Dash -> Splice m
-navSplice k d = runChildrenWithText
+navSplice :: Monad m => Key -> Dash -> Splice m
+navSplice (Key k) d = runChildrenWithText
     [ ("navLink", "/dashboards/" `T.append` k)
     , ("navName", dashName d)
     , ("navAlt",  dashDesc d)
@@ -39,33 +43,29 @@ dashSplices :: Monad m => Dash -> [(Text, Splice m)]
 dashSplices d =
     [ ("dashName", textSplice $ dashName d)
     , ("dashDesc", textSplice $ dashDesc d)
-    , ("graphs", graphSplices $ dashGraphs d)
+    , ("graphs",   graphSplices d)
     ]
 
-graphSplices :: Monad m => HashMap Graph -> Splice m
-graphSplices gs = do
-    n  <- getParamNode
-    let x = getAttribute 300 "width"  n
-        y = getAttribute 200 "height" n
-    indexedSplices (H.toList gs) $ \(i, (k, g)) -> runChildrenWith
-        [ ("graphNum",    textSplice $ num i)
+graphSplices :: Monad m => Dash -> Splice m
+graphSplices d = do
+    ps <- (map parseParam . X.elementAttrs) `liftM` getParamNode
+    flip mapSplices indexes $ \(i, (k, g)) -> runChildrenWith $
+        [ ("graphNum",    textSplice . T.pack $ show i)
         , ("graphActive", textSplice $ if i == 0 then "active" else "")
         , ("graphName",   textSplice $ graphName g)
         , ("graphDesc",   textSplice $ graphDesc g)
-        , ("graphWidth",  textSplice $ num x)
-        , ("graphHeight", textSplice $ num y)
-        , ("graphUrl",    textSplice . T.toLower $
-             "/dashboards/nginx/graphs/" `T.append` T.concat [k, "?width=", T.pack $ show x, "&height=", T.pack $ show y])
-        ]
+        , ("graphUrl",    textSplice $ graphUrl d k ps)
+        ] ++ map f ps
   where
-    num :: Integer -> Text
-    num = T.pack . show
+    f = (\(k, v) -> (k, textSplice v)) . toFragment
+    indexes  = zip [0..] . H.toList $ dashGraphs d
 
-indexedSplices :: (Monad m, Enum a, Num a, Monoid c)
-               => [b]
-               -> ((a, b) -> m c)
-               -> m c
-indexedSplices ss f = mapSplices f $ zip [0..] ss
-
-getAttribute :: Read a => a -> Text -> X.Node -> a
-getAttribute def name = maybe def (read . T.unpack) . X.getAttribute name
+graphUrl :: Dash -> Key -> [Param] -> Text
+graphUrl d (Key g) ps = T.concat
+    [ "/dashboards/"
+    , keyText . textKey $ dashName d -- ^ FIXME
+    , "/graphs/"
+    , g
+    , "?"
+    , fromFragments $ pack ps
+    ]

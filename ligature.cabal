@@ -20,10 +20,6 @@ source-repository head
     type:               git
     location:           git://github.com/brendanhay/numbersd.git
 
-flag development
-    description:        Whether to build the server in development (interpreted) mode
-    default:            False
-
 executable ligature
     main-is:            Main.hs
     hs-source-dirs:     src
@@ -37,35 +33,35 @@ executable ligature
                       , TypeSynonymInstances
 
     build-depends:      aeson
+                      , attoparsec
                       , directory
                       , base                      >= 4 && < 5
                       , bytestring
                       , conduit
+                      , containers
                       , filepath
+                      , hashable
                       , heist
                       , http-conduit
                       , lens
+                      , network
                       , MonadCatchIO-transformers
                       , mtl
                       , regex-compat
                       , snap
                       , snap-core
                       , snap-server
-                      , snap-loader-static
+                      , split
                       , text
                       , time
                       , transformers
                       , unordered-containers
+                      , utf8-string
                       , xmlhtml
 
-    if flag(development)
-        build-depends:  snap-loader-dynamic
-        cpp-options:    -DDEVELOPMENT
-        ghc-options:    -threaded -w
+    if impl(ghc >= 6.12.0)
+        ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
+                     -fno-warn-orphans -fno-warn-unused-do-bind
     else
-        if impl(ghc >= 6.12.0)
-            ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
-                         -fno-warn-orphans -fno-warn-unused-do-bind
-        else
-            ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
-                         -fno-warn-orphans
+        ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
+                     -fno-warn-orphans

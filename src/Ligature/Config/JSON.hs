@@ -21,7 +21,6 @@ import Control.Monad
 import Data.Aeson          (eitherDecode)
 import Data.Either         (partitionEithers)
 import Data.List           (insert, isSuffixOf)
-import Data.Text           (Text)
 import Ligature.Types
 import System.FilePath
 import System.Directory
@@ -39,7 +38,7 @@ parse dir = do
     mapM_ putStrLn es
     return $ H.fromList ds
 
-decode :: (FilePath, BL.ByteString) -> Either String (Text, Dash)
+decode :: (FilePath, BL.ByteString) -> Either String (Key, Dash)
 decode (path, bstr) = f $ eitherDecode bstr
   where
     f (Left e)  = Left $ path ++ ": " ++ e

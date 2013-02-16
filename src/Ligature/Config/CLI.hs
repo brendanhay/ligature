@@ -22,6 +22,7 @@ module Ligature.Config.CLI (
 import Data.Monoid
 import Data.Maybe
 import Data.Data
+import Network.URI
 import Snap.Core
 import Snap.Http.Server      hiding (Config)
 import System.Console.GetOpt
@@ -32,18 +33,18 @@ type SnapConfig = S.Config Snap Config
 
 data Config = Config
     { dashboards :: FilePath
-    , graphite   :: String
+    , graphite   :: URI
     } deriving (Typeable)
 
 instance Show Config where
     show Config{..} = unlines
         [ "Ligature:"
         , "dashboard directory: " ++ dashboards
-        , "graphite url: "        ++ graphite
+        , "graphite url: "        ++ show graphite
         ]
 
 instance Monoid Config where
-    mempty      = Config "" ""
+    mempty      = Config "dashboards" (fromJust $ parseURI "http://graphite")
     mappend a b = a { dashboards = dashboards b, graphite = graphite b }
 
 appConfig :: SnapConfig -> Config
@@ -54,14 +55,11 @@ snapConfig = extendedCommandLineConfig
     (options (fromMaybe mempty $ getOther def) ++ optDescrs def)
     mappend def
   where
-    def = compose emptyConfig
+    def = foldl (flip (.)) id
         [ setPort 8080
         , setAccessLog $ fileLog "access.log"
         , setErrorLog  $ fileLog "error.log"
-        ]
-
-compose :: a -> [a -> a] -> a
-compose v fs = foldl (flip (.)) id fs $ v
+        ] $ emptyConfig
 
 fileLog :: FilePath -> ConfigLog
 fileLog = ConfigFileLog . ("/var/log/ligature/" ++)
@@ -72,13 +70,15 @@ options cfg = map (fmapOpt $ fmap (`setOther` mempty))
     , dashboardsOption cfg
     ]
 
-option :: String -> (String -> a) -> String -> String -> OptDescr (Maybe a)
-option flag upd typ help = Option [] [flag] (ReqArg (Just . upd) typ) help
-
 graphiteOption :: Config -> OptDescr (Maybe Config)
-graphiteOption cfg = Option [] ["graphite"] (ReqArg (\s -> Just $ cfg) "URL")
-    $ "graphite url, default " ++ show (graphite cfg)
+graphiteOption cfg = option "graphite"
+    (\s -> cfg { graphite = fromJust $ parseURI s }) "URL" $
+    "graphite url, default " ++ show (graphite cfg)
 
 dashboardsOption :: Config -> OptDescr (Maybe Config)
-dashboardsOption cfg = option "dashboards" (\s -> cfg) "URL"
-    $ "dashboards directory, default " ++ show (dashboards cfg)
+dashboardsOption cfg = option "dashboards"
+    (\s -> cfg { dashboards = s }) "URL" $
+    "dashboards directory, default " ++ show (dashboards cfg)
+
+option :: String -> (String -> a) -> String -> String -> OptDescr (Maybe a)
+option flag upd typ help = Option [] [flag] (ReqArg (Just . upd) typ) help
