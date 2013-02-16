@@ -18,11 +18,11 @@
     });
 
 
-    var images = $('img.graph-image');
+    var images = $('img.graph-image').hide();
     function resized() {
         var width = $(window).width();
 
-        return images.each(function(i, elem) {
+        images.each(function(i, elem) {
             var img = $(elem);
             var src = img.data('src');
 
@@ -32,15 +32,23 @@
             } else {
                 img.attr('src', src);
             }
-        });
+        }).show();
     }
 
     resized();
 
+    var refreshEvery = 30000,
+        resizeAfter  = 150;
+
     var resizeTimer;
+    var refreshTimer = setTimeout(resized, refreshEvery);
+
     $(window).resize(function() {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(resized, 150);
+        clearTimeout(refreshTimer);
+
+        resizeTimer  = setTimeout(resized, 150);
+        refreshTimer = setTimeout(resized, refreshEvery);
     });
 
 })(window.jQuery);

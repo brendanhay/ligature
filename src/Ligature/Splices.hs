@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      : Ligature.Splices
 -- Copyright   : (c) 2013 Brendan Hay <brendan.g.hay@gmail.com>
@@ -22,15 +24,34 @@ import Data.Char           (toUpper)
 import Data.Text           (Text)
 import Heist
 import Heist.Interpreted
+import Heist.Splices
+import Snap.Core
 import Ligature.Types
 import Ligature.URL
 
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text           as T
+import qualified Data.Text.Encoding  as E
 import qualified Text.XmlHtml        as X
 
-navSplices :: Monad m => HashMap Dash -> [(Text, Splice m)]
-navSplices hmap = [("nav", mapSplices (uncurry navSplice) $ H.toList hmap)]
+navSplices :: (Monad m, MonadSnap (HeistT m m))
+           => HashMap Dash
+           -> [(Text, Splice m)]
+navSplices hmap =
+    [ ("nav",         mapSplices (uncurry navSplice) $ H.toList hmap)
+    , ("ifDashboard", ifDashboardSplice)
+    , ("currentUrl",  currentUrl >>= \u -> return [X.TextNode u])
+    ]
+
+ifDashboardSplice :: (Monad m, MonadSnap (HeistT m m)) => Splice m
+ifDashboardSplice = do
+    uri <- currentUrl
+    if "dashboards" `elem` T.splitOn "/" uri
+       then getParamNode >>= return . X.childNodes
+       else return []
+
+currentUrl :: MonadSnap m => m Text
+currentUrl = withRequest (return . head . T.splitOn "?" . E.decodeUtf8 . rqURI)
 
 navSplice :: Monad m => Key -> Dash -> Splice m
 navSplice (Key k) d = runChildrenWithText

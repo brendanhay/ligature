@@ -95,7 +95,7 @@ div.thumbnail:focus {
 @media (max-width: 979px) {
 
     body > .navbar .brand {
-        float: left;
+        display: none;
     }
 
     .navbar-inner {
