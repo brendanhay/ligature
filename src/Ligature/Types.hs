@@ -11,13 +11,15 @@
 --
 
 module Ligature.Types (
-      HashMap
-    , Key(..)
+      Key(..)
+    , HashMap
+    , Palette
     , Dash(..)
     , Graph(..)
     , Field(..)
-    , Function(..)
+    , Time(..)
     , Param(..)
+    , parseDashboard
     , parseParam
     , byteKey
     , textKey
@@ -27,10 +29,10 @@ module Ligature.Types (
     ) where
 
 import Control.Applicative
-import Control.Arrow          (second)
+import Control.Arrow          (first, second)
 import Data.Aeson.Types
 import Data.Attoparsec.Number (Number(..))
-import Data.Char              (toUpper, toLower)
+import Data.Char              (toUpper, toLower, isAlpha)
 import Data.Hashable          (Hashable)
 import Data.Maybe
 import Data.String            (IsString(..))
@@ -41,12 +43,14 @@ import qualified Data.HashMap.Strict   as H
 import qualified Data.Text             as T
 import qualified Data.Text.Encoding    as E
 
-type HashMap a = H.HashMap Key a
-
 newtype Key = Key Text deriving (Ord, Eq, Hashable, Show)
 
 instance IsString Key where
     fromString = Key . fromString
+
+type HashMap a = H.HashMap Key a
+
+type Palette = [Text]
 
 data Dash = Dash
     { dashName   :: Text
@@ -54,53 +58,71 @@ data Dash = Dash
     , dashGraphs :: HashMap Graph
     } deriving (Show)
 
-instance FromJSON Dash where
-    parseJSON (Object o) = Dash
-        <$> o .: "name"
-        <*> o .: "description"
-        <*> (o .: "graphs" >>= return . graphs)
-      where
-        graphs = H.fromList . map (\g -> (textKey $ graphName g, g))
-    parseJSON e = typeMismatch "Object" e
+parseDashboard :: [Palette] -> Value -> Parser Dash
+parseDashboard css (Object o) = Dash
+    <$> o .: "name"
+    <*> o .: "description"
+    <*> (o .: "graphs" >>= graphs)
+  where
+    graphs os = sequence (zipWith parseGraph (cycle css) os) >>=
+        return . H.fromList . map (\g -> (textKey $ graphName g, g))
+parseDashboard _ e = typeMismatch "Object" e
 
 data Graph = Graph
     { graphName   :: Text
     , graphDesc   :: Text
-    , graphParams :: [Param]
     , graphFields :: [Field]
     } deriving (Show)
 
-instance FromJSON Graph where
-    parseJSON (Object o) = Graph
-        <$> o .: "name"
-        <*> o .: "description"
-        <*> o `stripKeys` ["name", "description", "fields"]
-        <*> o .: "fields"
-    parseJSON e = typeMismatch "Object" e
+parseGraph :: Palette -> Object -> Parser Graph
+parseGraph cs o = Graph
+    <$> o .: "name"
+    <*> o .: "description"
+    <*> (o .: "fields" >>= return . parseFields cs)
 
 data Field = Field
     { fieldAlias   :: Text
+    , fieldColor   :: Text
     , fieldContext :: Text
-    , fieldFuncs   :: [Function]
-    } deriving (Show)
+    } deriving (Eq, Show)
 
-instance FromJSON Field where
-    parseJSON (Object o) = Field
-        <$> o .: "alias"
-        <*> o .: "context"
-        <*> o `stripKeys` ["alias", "context"]
-    parseJSON e = typeMismatch "Object" e
+parseFields :: Palette -> Object -> [Field]
+parseFields cs = zipWith f (cycle cs) . H.toList
+  where
+    f c (k, String v) = Field k c v
+    f _ (k, _)        = error $ "Invalid JSON String: " ++ T.unpack k
 
-data Function = Function Text Value deriving (Show)
+data Time
+    = Month Int
+    | Week Int
+    | Day Int
+    | Hour Int
+      deriving (Eq, Ord)
 
-instance FromJSON [Function] where
-    parseJSON (Object o) = return $ H.foldlWithKey' f [] o
+instance Show Time where
+    show (Month n) = show n ++ "month"
+    show (Week  n) = show n ++ "week"
+    show (Day   n) = show n ++ "day"
+    show (Hour  n) = show n ++ "hour"
+
+instance IsString Time where
+    fromString s = case r of
+        "month" -> Month n
+        "week"  -> Week n
+        "day"   -> Day n
+        "hour"  -> Hour n
+        _       -> Day 1
       where
-        f acc k v = Function k v : acc
-    parseJSON e = typeMismatch "Object" e
+        (r, n) = first T.toLower . second (read . T.unpack) .
+            T.partition isAlpha $ T.pack s
+
+instance FromJSON Time where
+    parseJSON (String s) = return . fromString $ T.unpack s
+    parseJSON e          = typeMismatch "String" e
 
 data Param
-    = Width Int
+    = From Time
+    | Width Int
     | Height Int
     | Template Text
     | Margin Int
@@ -162,6 +184,7 @@ readMay s = case [x | (x,t) <- reads s, ("","") <- lex t] of
 
 fromPair :: Pair -> Parser Param
 fromPair (k, v) = case k of
+    "from"               -> f From
     "width"              -> f Width
     "height"             -> f Height
     "template"           -> f Template
@@ -214,6 +237,3 @@ findGraph m d g = case H.lookup g m' of
     Nothing -> error $ "Graph key not found: " ++ show (g, H.keys m')
   where
     m' = dashGraphs $ findDash m d
-
-stripKeys :: FromJSON a => H.HashMap Text Value -> [Text] -> Parser a
-stripKeys hmap = parseJSON . Object . foldl (flip H.delete) hmap

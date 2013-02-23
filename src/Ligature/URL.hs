@@ -21,17 +21,20 @@ module Ligature.URL (
 
 import Codec.Binary.UTF8.String
 import Control.Applicative
+import Control.Arrow            ((***), second)
+import Control.Monad
 import Control.Monad.IO.Class   (liftIO)
 import Data.Aeson.Types
 import Data.Char                (toLower)
 import Data.Conduit.List        (consume)
 import Data.Hashable            (Hashable)
-import Data.List                (nub)
+import Data.List                (nub, foldl', intercalate)
 import Data.List.Split          (splitOneOf)
 import Data.Maybe               (fromJust)
 import Data.String              (IsString(..))
 import Data.Text                (Text)
 import Ligature.Types
+import Network.HTTP             (urlEncodeVars, urlEncode)
 import Network.HTTP.Conduit
 import Network.URI
 
@@ -52,13 +55,14 @@ pack = map Fragment
 instance UrlFragment Fragment where
     toFragment (Fragment f) = toFragment f
 
-instance UrlFragment [Field] where
-    -- TODO: wrap each field in functions recursively
-    toFragment fs = ("target", T.intercalate "," . nub $ map fieldContext fs)
+instance UrlFragment Field where
+    toFragment (Field _ clr ctx) = ("target", t)
+      where
+        t = T.concat ["color(", ctx, ",\"", clr, "\")"]
 
--- Use data.dynamic to get ctor name + lowercase?
 instance UrlFragment Param where
     toFragment p = case p of
+        (From v)               -> ("from", T.pack $ show v)
         (Width v)              -> ("width", s v)
         (Height v)             -> ("height", s v)
         (Template v)           -> ("template", v)
@@ -88,30 +92,24 @@ instance UrlFragment Param where
         s :: Show a => a -> Text
         s = T.pack . show
 
--- TODO: nub calls in this module need to check only fst from the tuple fragments
-
-fromFragments :: [Fragment] -> Text
-fromFragments = enc . join . map parts . nub . map toFragment
+fromFragments :: [Fragment] -> String
+fromFragments = intercalate "&" . map (parts . toFragment)
   where
-    enc  = T.replace "#" "%23"
-    join = T.intercalate "&"
-    parts (k, v) = T.concat [k, "=", v]
+    parts (k, v) = concat [T.unpack k, "=", urlEncode . T.unpack $ v]
 
 graphData :: URI -> Graph -> [Param] -> IO BS.ByteString
 graphData uri g ps = withManager $ \m -> do
-    let url = generateUrl uri g ps
-    liftIO $ putStrLn url
-    req  <- parseUrl url
+    req  <- parseUrl $ generateUrl uri g ps
     res  <- responseBody <$> http (applyAuth uri req) m
     body <- res C.$$+- consume
     return $ BS.concat body
 
 generateUrl :: URI -> Graph -> [Param] -> String
-generateUrl uri g ps = uriHost uri ++ "/render/?" ++
-    (T.unpack . fromFragments $ fields : params)
+generateUrl uri g ps =
+    uriHost uri ++ "/render/?" ++ (fromFragments $ fields ++ params)
   where
-    params = pack $ ps ++ graphParams g
-    fields = Fragment $ graphFields g
+    params = pack ps
+    fields = pack $ graphFields g
 
 applyAuth :: URI -> Request a -> Request a
 applyAuth uri req = maybe req (\(u, p) -> applyBasicAuth u p req) (uriUser uri)

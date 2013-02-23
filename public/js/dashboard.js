@@ -1,9 +1,28 @@
 (function($) {
 
+    $.fn.highlight = function () {
+        $(this).each(function () {
+            var el = $(this);
+            $("<div/>")
+                .width(el.outerWidth())
+                .height(el.outerHeight())
+                .css({
+                    "position": "absolute",
+                    "left": el.offset().left,
+                    "top": el.offset().top,
+                    "background-color": "#ffff99",
+                    "opacity": ".7",
+                    "z-index": "9999999"
+                }).appendTo('body').fadeOut(1000).queue(function () { $(this).remove(); });
+        });
+    };
+
     var carousel = $('#carousel');
+
     carousel.carousel();
 
     var graphs = $('.graph a');
+
     graphs.tooltip().click(function() {
         var num = $(this).data('graphNum');
         carousel.carousel(parseInt(num));
@@ -17,8 +36,8 @@
         }
     });
 
-
     var images = $('img.graph-image').hide();
+
     function resized() {
         var width = $(window).width();
 
@@ -33,6 +52,8 @@
                 img.attr('src', src);
             }
         }).show();
+
+        $('.navbar .time').text('Updated at ' + new Date().toLocaleTimeString());
     }
 
     resized();

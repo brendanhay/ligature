@@ -30,6 +30,7 @@ executable ligature
                       , OverloadedStrings
                       , RecordWildCards
                       , ScopedTypeVariables
+                      , TupleSections
                       , TypeSynonymInstances
 
     build-depends:      aeson
@@ -42,18 +43,19 @@ executable ligature
                       , filepath
                       , hashable
                       , heist
+                      , HTTP
                       , http-conduit
                       , lens
                       , network
                       , MonadCatchIO-transformers
                       , mtl
+                      , random
                       , regex-compat
                       , snap
                       , snap-core
                       , snap-server
                       , split
                       , text
-                      , time
                       , transformers
                       , unordered-containers
                       , utf8-string

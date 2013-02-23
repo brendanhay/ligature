@@ -19,8 +19,11 @@ module Ligature.Splices (
 
 import Control.Applicative
 import Control.Monad.Trans.Class
+import Control.Monad.IO.Class
 import Control.Monad
 import Data.Char           (toUpper)
+import Data.Maybe
+import Data.String
 import Data.Text           (Text)
 import Heist
 import Heist.Interpreted
@@ -34,7 +37,7 @@ import qualified Data.Text           as T
 import qualified Data.Text.Encoding  as E
 import qualified Text.XmlHtml        as X
 
-navSplices :: (Monad m, MonadSnap (HeistT m m))
+navSplices :: (MonadSnap m, MonadSnap (HeistT m m))
            => HashMap Dash
            -> [(Text, Splice m)]
 navSplices hmap =
@@ -50,6 +53,16 @@ ifDashboardSplice = do
        then getParamNode >>= return . X.childNodes
        else return []
 
+menuEntrySplice :: MonadSnap m => Splice m
+menuEntrySplice = do
+    requestPath <- lift $ withRequest (return . rqURI)
+    node <- getParamNode
+    let setActive n = if X.getAttribute "href" node == Just (E.decodeUtf8 requestPath)
+                       then X.setAttribute "class" "active" n
+                       else n
+    let aNode  = X.Element "a" [("href", fromMaybe "/" $ X.getAttribute "href" node)] $ [X.TextNode (X.nodeText node)]
+    return [setActive $ X.Element "li" [] [aNode]]
+
 currentUrl :: MonadSnap m => m Text
 currentUrl = withRequest (return . head . T.splitOn "?" . E.decodeUtf8 . rqURI)
 
@@ -60,22 +73,39 @@ navSplice (Key k) d = runChildrenWithText
     , ("navAlt",  dashDesc d)
     ]
 
-dashSplices :: Monad m => Dash -> [(Text, Splice m)]
-dashSplices d =
-    [ ("dashName", textSplice $ dashName d)
-    , ("dashDesc", textSplice $ dashDesc d)
-    , ("graphs",   graphSplices d)
-    ]
+dashSplices :: (MonadSnap m, MonadSnap (HeistT m m)) => Dash -> Time -> [(Text, Splice m)]
+dashSplices d from =
+     [ ("dashName", textSplice $ dashName d)
+     , ("dashDesc", textSplice $ dashDesc d)
+     , ("from",     textSplice . T.pack $ show from)
+     , ("graphs",   graphSplices d)
+     , ("fromLink", fromLinkSplice from)
+     ]
 
-graphSplices :: Monad m => Dash -> Splice m
+fromLinkSplice :: (MonadSnap m, MonadSnap (HeistT m m)) => Time -> Splice m
+fromLinkSplice from = do
+    url  <- liftSnap $ currentUrl
+    node <- getParamNode
+    let span = fromString . T.unpack . fromJust $ X.getAttribute "span" node
+        text = fromJust $ X.getAttribute "text" node
+    return [active span from $ X.Element "li" [] [
+        X.Element "a" [("href", T.concat [url, "?from=", T.pack $ show span])] $ [X.TextNode text]
+        ]]
+  where
+    active a b n = if a == b
+        then X.setAttribute "class" "active" n
+        else n
+
+graphSplices :: (MonadSnap m, MonadSnap (HeistT m m)) => Dash -> Splice m
 graphSplices d = do
     ps <- (map parseParam . X.elementAttrs) `liftM` getParamNode
-    flip mapSplices indexes $ \(i, (k, g)) -> runChildrenWith $
+    flip mapSplices indexes $ \(i, (k, Graph{..})) -> runChildrenWith $
         [ ("graphNum",    textSplice . T.pack $ show i)
         , ("graphActive", textSplice $ if i == 0 then "active" else "")
-        , ("graphName",   textSplice $ graphName g)
-        , ("graphDesc",   textSplice $ graphDesc g)
+        , ("graphName",   textSplice graphName)
+        , ("graphDesc",   textSplice graphDesc)
         , ("graphUrl",    textSplice $ graphUrl d k ps)
+        , ("fields",      fieldSplices graphFields)
         ] ++ map f ps
   where
     f = (\(k, v) -> (k, textSplice v)) . toFragment
@@ -88,5 +118,11 @@ graphUrl d (Key g) ps = T.concat
     , "/graphs/"
     , g
     , "?"
-    , fromFragments $ pack ps
+    , T.pack . fromFragments $ pack ps
+    ]
+
+fieldSplices :: Monad m => [Field] -> Splice m
+fieldSplices fs = flip mapSplices fs $ \Field{..} -> runChildrenWith $
+    [ ("fieldAlias", textSplice fieldAlias)
+    , ("fieldColor", textSplice fieldColor)
     ]

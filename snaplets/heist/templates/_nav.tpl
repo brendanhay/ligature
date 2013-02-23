@@ -15,17 +15,18 @@
         </li>
 
         <ifDashboard>
-          <li class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Time <b class="caret"></b></a>
-            <ul class="dropdown-menu">
-              <li><a href="${currentUrl}?from=month">Month</a></li>
-              <li><a href="${currentUrl}?from=week">Week</a></li>
-              <li><a href="${currentUrl}?from=day">Day</a></li>
-              <li><a href="${currentUrl}?from=hour">Hour</a></li>
-            </ul>
-          </li>
+          <fromLink span="-1month" text="Month" />
+          <fromLink span="-1week" text="Week" />
+          <fromLink span="-1day" text="Day" />
+          <fromLink span="-1hour" text="Hour" />
         </ifDashboard>
       </ul>
+
+      <ifDashboard>
+        <div class="pull-right">
+          <span class="time"></span>
+        </div>
+      </ifDashboard>
 
     </div>
   </div>

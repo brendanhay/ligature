@@ -1,4 +1,6 @@
 body {
+    background-color: #f9f9f9;
+    background-image: url('/img/grey.png');
 }
 
 body > .navbar {
@@ -7,15 +9,61 @@ body > .navbar {
 
 body > .navbar .brand {
     float: right;
+    padding-top: 8px;
+    font-weight: bold;
+}
+
+.navbar .time {
+    display: block;
+    padding: 10px 15px 0 0;
+    text-shadow: 1px -1px -1px rgba(0,0,0,0.25);
 }
 
 .graph {
     margin-bottom: 20px;
 }
 
+.graph-image {
+    outline: none;
+}
+
 .graph-link {
     display: block;
     background: #323232 url('/img/load.gif') no-repeat center center;
+}
+
+.legend {
+    position: relative;
+    top: 10px;
+    left: 2px;
+    z-index: 11;
+}
+
+.legend .alias,
+.legend .color {
+    display: block;
+}
+
+.legend .alias {
+    position: relative;
+    top: -2px;
+    left: 4px;
+    text-shadow: 1px 1px 1px rgba(0,0,0,.2);
+    text-transform: capitalize;
+    font-size: 12px;
+    color: #ccc;
+}
+
+.legend .color {
+    float: left;
+    width: 14px;
+    height: 14px;
+    -webkit-border-radius: 2px;
+    -moz-border-radius: 2px;
+    border-radius: 2px;
+    -webkit-box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
+    -moz-box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .carousel-inner {
@@ -27,6 +75,7 @@ body > .navbar .brand {
 }
 
 .carousel {
+    background-color: #fff;
     padding-bottom: 4px;
     border-bottom: solid 1px #ddd;
 }
@@ -82,14 +131,18 @@ footer {
 
 div.thumbnail:hover,
 div.thumbnail:focus {
-  border-color: #0088cc;
-  -webkit-box-shadow: 0 1px 4px rgba(0, 105, 214, 0.25);
-     -moz-box-shadow: 0 1px 4px rgba(0, 105, 214, 0.25);
-          box-shadow: 0 1px 4px rgba(0, 105, 214, 0.25);
+    border-color: #0088cc;
+    -webkit-box-shadow: 0 1px 4px rgba(0, 105, 214, 0.25);
+    -moz-box-shadow: 0 1px 4px rgba(0, 105, 214, 0.25);
+    box-shadow: 0 1px 4px rgba(0, 105, 214, 0.25);
 }
 
 .thumbnails img {
     background-color: #323232;
+}
+
+.thumbnail {
+    background-color: #fff;
 }
 
 @media (max-width: 979px) {

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
 -- |
--- Module      : Ligature.Config.CLI
+-- Module      : Ligature.Config
 -- Copyright   : (c) 2013 Brendan Hay <brendan.g.hay@gmail.com>
 -- License     : This Source Code Form is subject to the terms of
 --               the Mozilla Public License, v. 2.0.
@@ -12,7 +12,7 @@
 -- Portability : non-portable (GHC extensions)
 --
 
-module Ligature.Config.CLI (
+module Ligature.Config (
       SnapConfig
     , Config(..)
     , snapConfig
@@ -32,20 +32,23 @@ import qualified Snap.Http.Server as S
 type SnapConfig = S.Config Snap Config
 
 data Config = Config
-    { dashboards :: FilePath
-    , graphite   :: URI
+    { dashboardDir :: FilePath
+    , graphiteUrl  :: URI
     } deriving (Typeable)
 
 instance Show Config where
     show Config{..} = unlines
         [ "Ligature:"
-        , "dashboard directory: " ++ dashboards
-        , "graphite url: "        ++ show graphite
+        , "dashboard directory: " ++ dashboardDir
+        , "graphite url: "        ++ show graphiteUrl
         ]
 
 instance Monoid Config where
     mempty      = Config "dashboards" (fromJust $ parseURI "http://graphite")
-    mappend a b = a { dashboards = dashboards b, graphite = graphite b }
+    mappend a b = a
+        { dashboardDir = dashboardDir b
+        , graphiteUrl  = graphiteUrl b
+        }
 
 appConfig :: SnapConfig -> Config
 appConfig = fromJust . getOther
@@ -72,13 +75,13 @@ options cfg = map (fmapOpt $ fmap (`setOther` mempty))
 
 graphiteOption :: Config -> OptDescr (Maybe Config)
 graphiteOption cfg = option "graphite"
-    (\s -> cfg { graphite = fromJust $ parseURI s }) "URL" $
-    "graphite url, default " ++ show (graphite cfg)
+    (\s -> cfg { graphiteUrl = fromJust $ parseURI s }) "URL" $
+    "graphite url, default " ++ show (graphiteUrl cfg)
 
 dashboardsOption :: Config -> OptDescr (Maybe Config)
 dashboardsOption cfg = option "dashboards"
-    (\s -> cfg { dashboards = s }) "URL" $
-    "dashboards directory, default " ++ show (dashboards cfg)
+    (\s -> cfg { dashboardDir = s }) "URL" $
+    "dashboards directory, default " ++ show (dashboardDir cfg)
 
 option :: String -> (String -> a) -> String -> String -> OptDescr (Maybe a)
 option flag upd typ help = Option [] [flag] (ReqArg (Just . upd) typ) help

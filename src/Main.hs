@@ -23,8 +23,9 @@ import Control.Monad                 (liftM)
 import Control.Monad.IO.Class        (MonadIO, liftIO)
 import Data.ByteString               (ByteString)
 import Data.Char                     (toUpper)
-import Ligature.Config.CLI
-import Ligature.Config.JSON
+import Data.String                   (IsString(..))
+import Ligature.Config
+import Ligature.JSON
 import Ligature.Splices
 import Ligature.Types
 import Ligature.URL
@@ -94,10 +95,11 @@ main = do
     cleanup
 
 site :: Config -> SnapletInit App App
-site cfg = makeSnaplet "ligature" "Graphite Dashboards" Nothing $ do
-    h <- nestSnaplet "" heist $ heistInit "templates"
-    m <- liftIO . parse $ dashboards cfg
-    addRoutes  $ routes (graphite cfg) m
+site Config{..} = makeSnaplet "ligature" "Graphite Dashboards" Nothing $ do
+    h  <- nestSnaplet "" heist $ heistInit "templates"
+    ps <- liftIO $ palettes "palettes"
+    m  <- liftIO $ dashboards dashboardDir ps
+    addRoutes  $ routes graphiteUrl m
     addSplices $ navSplices m
     return $ App h
 
@@ -118,4 +120,5 @@ graph uri hmap = do
 dashboard :: HasHeist a => HashMap Dash -> Handler a b ()
 dashboard hmap = do
     d <- requireParam "dashboard"
-    renderWithSplices "dashboard" . dashSplices $ findDash hmap d
+    f <- (maybe "-1day" (fromString . BS.unpack)) <$> getParam "from"
+    renderWithSplices "dashboard" $ dashSplices (findDash hmap d) f

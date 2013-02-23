@@ -8,8 +8,8 @@
 
   <div id="carousel" class="carousel slide" data-interval="2000">
     <div class="carousel-inner">
-      <graphs height="400" hideLegend="true" bgcolor="#323232" minorGridLineColor="#444444" majorGridLineColor="#404040">
-        <apply template="_graph_focused" />
+      <graphs height="500" from="${from}" bgcolor="#323232" minorGridLineColor="#444444" majorGridLineColor="#404040" hideLegend="true">
+        <apply template="_focused" />
       </graphs>
     </div>
     <a class="left carousel-control" href="#carousel" data-slide="prev">&lsaquo;</a>
@@ -18,8 +18,8 @@
 
   <div class="container">
     <div class="row">
-      <graphs width="210" height="180" hideLegend="true" hideAxes="true" bgcolor="#323232">
-        <apply template="_graph_thumbnail" />
+      <graphs width="210" height="180" from="${from}" bgcolor="#323232" hideLegend="true" hideAxes="true">
+        <apply template="_thumbnail" />
       </graphs>
     </div>
   </div>
